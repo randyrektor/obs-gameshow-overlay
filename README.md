@@ -1,20 +1,17 @@
-# OBS Game Show Overlay
+# Game Show Overlay
 
-A browser-based game show overlay system that integrates with OBS Studio using WebSocket. This system allows for managing contestants, scores, and buzzer functionality in a game show setting.
+A browser-based game show overlay system for managing contestants, scores, and buzzer functionality in a game show setting.
 
 ## Features
 
 - Real-time scoreboard updates
 - Contestant buzzer system
 - Admin panel for managing contestants and scores
-- OBS WebSocket integration for overlay control
 - Responsive design for both admin and contestant views
 
 ## Prerequisites
 
 - Node.js (v14 or higher)
-- OBS Studio (v27 or higher)
-- OBS WebSocket plugin (included with OBS v28+)
 
 ## Setup
 
@@ -38,15 +35,7 @@ npm install
 4. Create a `.env` file in the root directory:
 ```
 PORT=3001
-OBS_PASSWORD=your_obs_websocket_password
 ```
-
-5. Configure OBS WebSocket:
-   - Open OBS Studio
-   - Go to Tools > WebSocket Server Settings
-   - Enable WebSocket server
-   - Set a password (use the same as in your .env file)
-   - Click OK
 
 ## Running the Application
 
@@ -77,12 +66,6 @@ npm start
 - View current score
 - Use the buzzer button to buzz in
 - See game state and buzzer status
-
-### OBS Integration
-The system will automatically connect to OBS WebSocket and control overlays based on game events. Make sure to:
-1. Create a browser source in OBS pointing to the contestant view URL
-2. Set up appropriate scenes and transitions
-3. Configure any additional overlays or effects as needed
 
 ## Development
 
