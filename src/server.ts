@@ -3,6 +3,9 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -12,7 +15,9 @@ const io = new Server(httpServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  pingTimeout: 5000,
+  pingInterval: 2000
 });
 
 app.use(cors());
@@ -24,6 +29,7 @@ interface Contestant {
   name: string;
   score: number;
   buzzed: boolean;
+  connected: boolean;
 }
 
 type GameType = 'buzzer' | 'multiple-choice' | 'two-option' | 'timer-only';
@@ -55,6 +61,9 @@ let timerInterval: NodeJS.Timeout | null = null;
 
 let questions: Question[] = [];
 let currentQuestionIndex = 0;
+
+// Add socket mapping
+const socketToContestant = new Map<string, string>(); // socket.id -> contestantId
 
 function emitGameState() {
   let configToSend = gameConfig;
@@ -119,6 +128,9 @@ io.on('connection', (socket) => {
     const contestant = contestants.find(c => c.id === contestantId);
     if (contestant) {
       socket.join(contestantId);
+      contestant.connected = true;
+      socketToContestant.set(socket.id, contestantId);
+      emitGameState();
     }
     // Always send the current game state to the joining socket
     socket.emit('gameState', {
@@ -136,6 +148,29 @@ io.on('connection', (socket) => {
       revealAnswers,
       correctAnswer,
     });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    const contestantId = socketToContestant.get(socket.id);
+    if (contestantId) {
+      const contestant = contestants.find(c => c.id === contestantId);
+      if (contestant) {
+        console.log(`Setting contestant ${contestant.name} (${contestant.id}) to disconnected`);
+        contestant.connected = false;
+        socketToContestant.delete(socket.id);
+        // Force immediate state update
+        io.emit('gameState', {
+          contestants,
+          buzzOrder,
+          gameType,
+          gameConfig,
+          answers,
+          revealAnswers,
+          correctAnswer,
+        });
+      }
+    }
   });
 
   socket.on('buzz', async (contestantId: string) => {
@@ -174,6 +209,13 @@ io.on('connection', (socket) => {
     }
     // Stop timer when switching game types
     stopTimer();
+    // Trigger recording for game type change
+    emitGameState();
+  });
+
+  socket.on('admin:setQuestions', (newQuestions: Question[]) => {
+    questions = newQuestions;
+    currentQuestionIndex = 0;
     emitGameState();
   });
 
@@ -194,7 +236,6 @@ io.on('connection', (socket) => {
 
   socket.on('admin:revealAnswers', () => {
     revealAnswers = true;
-    // Update scores for correct answers (only in multiple choice mode)
     if (gameType === 'multiple-choice' && correctAnswer) {
       contestants.forEach(contestant => {
         const answer = answers[contestant.id];
@@ -229,13 +270,10 @@ io.on('connection', (socket) => {
       const oldScore = contestant.score;
       contestant.score = data.score;
       
-      // If score increased in buzzer mode, reset buzzers
       if (gameType === 'buzzer' && data.score > oldScore) {
-        console.log('Point awarded in buzzer mode, resetting buzzers');
         contestants.forEach(c => c.buzzed = false);
         buzzOrder = [];
       }
-      
       emitGameState();
     }
   });
@@ -262,22 +300,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('admin:setQuestions', (newQuestions: Question[]) => {
-    questions = newQuestions;
-    currentQuestionIndex = 0;
-    if (questions.length > 0) {
-      const firstQuestion = questions[0];
-      gameConfig = {
-        question: firstQuestion.question,
-        options: firstQuestion.options,
-        questions: questions,
-        currentQuestionIndex: 0
-      };
-      correctAnswer = firstQuestion.correctAnswer;
-    }
-    emitGameState();
-  });
-
   socket.on('admin:startTimer', (duration: number) => {
     startTimer(duration);
   });
@@ -300,7 +322,8 @@ app.post('/api/contestants', (req, res) => {
     id: Math.random().toString(36).substr(2, 9),
     name,
     score: 0,
-    buzzed: false
+    buzzed: false,
+    connected: false
   };
   contestants.push(contestant);
   emitGameState();
@@ -311,6 +334,15 @@ app.get('/api/contestants', (req, res) => {
   console.log('Getting contestants');
   res.json(contestants);
 });
+
+// Create recordings directory if it doesn't exist
+const recordingsDir = path.join(os.homedir(), 'Desktop', 'Test Animations');
+if (!fs.existsSync(recordingsDir)) {
+  fs.mkdirSync(recordingsDir, { recursive: true });
+}
+
+// Serve recordings directory
+app.use('/recordings', express.static(recordingsDir));
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
