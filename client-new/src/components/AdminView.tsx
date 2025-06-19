@@ -65,6 +65,8 @@ interface GameState {
   buzzOrder?: string[];
   gameType?: GameType;
   gameConfig?: GameConfig;
+  questions?: Question[];
+  currentQuestionIndex?: number;
   answers?: Record<string, string>;
   revealAnswers?: boolean;
   correctAnswer?: string;
@@ -92,6 +94,8 @@ const AdminView: React.FC = () => {
 
     newSocket.on('connect', () => {
       console.log('WebSocket connected successfully');
+      // Request current game state from server
+      newSocket.emit('join', 'admin');
     });
 
     newSocket.on('connect_error', (error) => {
@@ -111,6 +115,14 @@ const AdminView: React.FC = () => {
         if (state.gameConfig.currentQuestionIndex !== undefined) {
           setCurrentQuestionIndex(state.gameConfig.currentQuestionIndex);
         }
+      }
+      if (state.questions) {
+        console.log('Setting questions:', state.questions);
+        setQuestions(state.questions);
+      }
+      if (state.currentQuestionIndex !== undefined) {
+        console.log('Setting current question index:', state.currentQuestionIndex);
+        setCurrentQuestionIndex(state.currentQuestionIndex);
       }
       setRevealAnswers(!!state.revealAnswers);
       setCorrectAnswer(state.correctAnswer || null);
@@ -410,11 +422,7 @@ const AdminView: React.FC = () => {
             onClick={handleResetBuzzers}
             sx={{ 
               minHeight: 36,
-              minWidth: 120,
-              '&:hover': {
-                minHeight: 36,
-                minWidth: 120
-              }
+              minWidth: 120
             }}
           >
             Reset Buzzers
@@ -425,11 +433,7 @@ const AdminView: React.FC = () => {
             onClick={handleResetScores}
             sx={{ 
               minHeight: 36,
-              minWidth: 120,
-              '&:hover': {
-                minHeight: 36,
-                minWidth: 120
-              }
+              minWidth: 120
             }}
           >
             Reset Scores
@@ -456,11 +460,7 @@ const AdminView: React.FC = () => {
             onClick={handleAddContestant}
             sx={{ 
               minHeight: 36,
-              minWidth: 100,
-              '&:hover': {
-                minHeight: 36,
-                minWidth: 100
-              }
+              minWidth: 100
             }}
           >
             Add
@@ -484,11 +484,7 @@ const AdminView: React.FC = () => {
             onClick={() => setResetScoresDialogOpen(false)}
             sx={{ 
               minHeight: 36,
-              minWidth: 80,
-              '&:hover': {
-                minHeight: 36,
-                minWidth: 80
-              }
+              minWidth: 80
             }}
           >
             Cancel
@@ -499,11 +495,7 @@ const AdminView: React.FC = () => {
             variant="contained"
             sx={{ 
               minHeight: 36,
-              minWidth: 120,
-              '&:hover': {
-                minHeight: 36,
-                minWidth: 120
-              }
+              minWidth: 120
             }}
           >
             Reset Scores
@@ -550,11 +542,7 @@ const AdminView: React.FC = () => {
             disabled={gameConfig.timerRunning}
             sx={{ 
               minHeight: 36,
-              minWidth: 120,
-              '&:hover': {
-                minHeight: 36,
-                minWidth: 120
-              }
+              minWidth: 120
             }}
           >
             Start Timer
@@ -566,11 +554,7 @@ const AdminView: React.FC = () => {
             disabled={!gameConfig.timerRunning}
             sx={{ 
               minHeight: 36,
-              minWidth: 120,
-              '&:hover': {
-                minHeight: 36,
-                minWidth: 120
-              }
+              minWidth: 120
             }}
           >
             Stop Timer
@@ -636,11 +620,7 @@ const AdminView: React.FC = () => {
                     color="warning" 
                     sx={{ 
                       minWidth: 200,
-                      minHeight: 36,
-                      '&:hover': {
-                        minWidth: 200,
-                        minHeight: 36
-                      }
+                      minHeight: 36
                     }}
                   >
                     <label htmlFor="csv-upload" style={{ width: '100%', display: 'block', cursor: 'pointer' }}>
@@ -663,11 +643,7 @@ const AdminView: React.FC = () => {
                     disabled={currentQuestionIndex === 0}
                     sx={{ 
                       minHeight: 36,
-                      minWidth: 100,
-                      '&:hover': {
-                        minHeight: 36,
-                        minWidth: 100
-                      }
+                      minWidth: 100
                     }}
                   >
                     Previous
@@ -681,11 +657,7 @@ const AdminView: React.FC = () => {
                     disabled={currentQuestionIndex === questions.length - 1}
                     sx={{ 
                       minHeight: 36,
-                      minWidth: 100,
-                      '&:hover': {
-                        minHeight: 36,
-                        minWidth: 100
-                      }
+                      minWidth: 100
                     }}
                   >
                     Next
@@ -795,10 +767,7 @@ const AdminView: React.FC = () => {
                     fontSize: '1.1rem', 
                     fontWeight: 700, 
                     width: '100%',
-                    minHeight: 48,
-                    '&:hover': {
-                      minHeight: 48
-                    }
+                    minHeight: 48
                   }}
                   fullWidth
                 >
@@ -899,10 +868,7 @@ const AdminView: React.FC = () => {
                     fontSize: '1.1rem', 
                     fontWeight: 700, 
                     width: '100%',
-                    minHeight: 48,
-                    '&:hover': {
-                      minHeight: 48
-                    }
+                    minHeight: 48
                   }}
                   fullWidth
                 >
@@ -926,11 +892,7 @@ const AdminView: React.FC = () => {
               onClick={copyAllUrls}
               sx={{ 
                 minHeight: 36,
-                minWidth: 120,
-                '&:hover': {
-                  minHeight: 36,
-                  minWidth: 120
-                }
+                minWidth: 120
               }}
             >
               Copy All
@@ -941,11 +903,7 @@ const AdminView: React.FC = () => {
               onClick={copyAllUrlsOnly}
               sx={{ 
                 minHeight: 36,
-                minWidth: 120,
-                '&:hover': {
-                  minHeight: 36,
-                  minWidth: 120
-                }
+                minWidth: 120
               }}
             >
               URLs Only
