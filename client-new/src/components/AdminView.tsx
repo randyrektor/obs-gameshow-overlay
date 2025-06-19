@@ -195,6 +195,20 @@ const AdminView: React.FC = () => {
     navigator.clipboard.writeText(url);
   };
 
+  const copyAllUrls = () => {
+    const formattedList = gameState.contestants
+      .map(c => `${c.name}: ${config.frontendUrl}/contestant/${c.id}`)
+      .join('\n');
+    navigator.clipboard.writeText(formattedList);
+  };
+
+  const copyAllUrlsOnly = () => {
+    const urlsOnly = gameState.contestants
+      .map(c => `${config.frontendUrl}/contestant/${c.id}`)
+      .join('\n');
+    navigator.clipboard.writeText(urlsOnly);
+  };
+
   const getBuzzOrder = (id: string) => {
     if (!gameState.buzzOrder) return null;
     const idx = gameState.buzzOrder.indexOf(id);
@@ -792,18 +806,22 @@ const AdminView: React.FC = () => {
           <Typography variant="h4">
             Contestants
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<ContentCopyIcon />}
-            onClick={() => {
-              const formattedList = gameState.contestants
-                .map(c => `${c.name}: http://localhost:3000/contestant/${c.id}`)
-                .join('\n');
-              navigator.clipboard.writeText(formattedList);
-            }}
-          >
-            Copy All
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              startIcon={<ContentCopyIcon />}
+              onClick={copyAllUrls}
+            >
+              Copy All
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<ContentCopyIcon />}
+              onClick={copyAllUrlsOnly}
+            >
+              URLs Only
+            </Button>
+          </Box>
         </Box>
         <DragDropContext onDragEnd={handleReorder}>
           <Droppable droppableId="contestant-list">
