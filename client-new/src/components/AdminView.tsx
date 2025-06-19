@@ -408,6 +408,14 @@ const AdminView: React.FC = () => {
             variant="contained"
             color="secondary"
             onClick={handleResetBuzzers}
+            sx={{ 
+              minHeight: 36,
+              minWidth: 120,
+              '&:hover': {
+                minHeight: 36,
+                minWidth: 120
+              }
+            }}
           >
             Reset Buzzers
           </Button>
@@ -415,6 +423,14 @@ const AdminView: React.FC = () => {
             variant="contained"
             color="primary"
             onClick={handleResetScores}
+            sx={{ 
+              minHeight: 36,
+              minWidth: 120,
+              '&:hover': {
+                minHeight: 36,
+                minWidth: 120
+              }
+            }}
           >
             Reset Scores
           </Button>
@@ -438,6 +454,14 @@ const AdminView: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleAddContestant}
+            sx={{ 
+              minHeight: 36,
+              minWidth: 100,
+              '&:hover': {
+                minHeight: 36,
+                minWidth: 100
+              }
+            }}
           >
             Add
           </Button>
@@ -456,8 +480,32 @@ const AdminView: React.FC = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setResetScoresDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleConfirmResetScores} color="error" variant="contained">
+          <Button 
+            onClick={() => setResetScoresDialogOpen(false)}
+            sx={{ 
+              minHeight: 36,
+              minWidth: 80,
+              '&:hover': {
+                minHeight: 36,
+                minWidth: 80
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmResetScores} 
+            color="error" 
+            variant="contained"
+            sx={{ 
+              minHeight: 36,
+              minWidth: 120,
+              '&:hover': {
+                minHeight: 36,
+                minWidth: 120
+              }
+            }}
+          >
             Reset Scores
           </Button>
         </DialogActions>
@@ -500,6 +548,14 @@ const AdminView: React.FC = () => {
             color="primary"
             onClick={handleStartTimer}
             disabled={gameConfig.timerRunning}
+            sx={{ 
+              minHeight: 36,
+              minWidth: 120,
+              '&:hover': {
+                minHeight: 36,
+                minWidth: 120
+              }
+            }}
           >
             Start Timer
           </Button>
@@ -508,6 +564,14 @@ const AdminView: React.FC = () => {
             color="secondary"
             onClick={handleStopTimer}
             disabled={!gameConfig.timerRunning}
+            sx={{ 
+              minHeight: 36,
+              minWidth: 120,
+              '&:hover': {
+                minHeight: 36,
+                minWidth: 120
+              }
+            }}
           >
             Stop Timer
           </Button>
@@ -566,7 +630,19 @@ const AdminView: React.FC = () => {
                   Question Management
                 </Typography>
                 <Stack direction="row" spacing={2} sx={{ mb: 2, width: '100%' }} alignItems="center">
-                  <Button variant="contained" component="span" color="warning" sx={{ minWidth: 200 }}>
+                  <Button 
+                    variant="contained" 
+                    component="span" 
+                    color="warning" 
+                    sx={{ 
+                      minWidth: 200,
+                      minHeight: 36,
+                      '&:hover': {
+                        minWidth: 200,
+                        minHeight: 36
+                      }
+                    }}
+                  >
                     <label htmlFor="csv-upload" style={{ width: '100%', display: 'block', cursor: 'pointer' }}>
                       <input
                         accept=".csv"
@@ -585,6 +661,14 @@ const AdminView: React.FC = () => {
                     variant="outlined"
                     onClick={handlePreviousQuestion}
                     disabled={currentQuestionIndex === 0}
+                    sx={{ 
+                      minHeight: 36,
+                      minWidth: 100,
+                      '&:hover': {
+                        minHeight: 36,
+                        minWidth: 100
+                      }
+                    }}
                   >
                     Previous
                   </Button>
@@ -595,6 +679,14 @@ const AdminView: React.FC = () => {
                     variant="outlined"
                     onClick={handleNextQuestion}
                     disabled={currentQuestionIndex === questions.length - 1}
+                    sx={{ 
+                      minHeight: 36,
+                      minWidth: 100,
+                      '&:hover': {
+                        minHeight: 36,
+                        minWidth: 100
+                      }
+                    }}
                   >
                     Next
                   </Button>
@@ -636,6 +728,9 @@ const AdminView: React.FC = () => {
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            '&:hover': {
+                              height: 40
+                            }
                           }}
                         >
                           <span style={{ fontWeight: 700, whiteSpace: 'nowrap', marginRight: 8 }}>{String.fromCharCode(65 + idx)}:</span>
@@ -695,7 +790,16 @@ const AdminView: React.FC = () => {
                   color="primary"
                   onClick={handleRevealAnswers}
                   disabled={revealAnswers}
-                  sx={{ mt: 2, fontSize: '1.1rem', fontWeight: 700, width: '100%' }}
+                  sx={{ 
+                    mt: 2, 
+                    fontSize: '1.1rem', 
+                    fontWeight: 700, 
+                    width: '100%',
+                    minHeight: 48,
+                    '&:hover': {
+                      minHeight: 48
+                    }
+                  }}
                   fullWidth
                 >
                   Reveal Answers
@@ -790,7 +894,16 @@ const AdminView: React.FC = () => {
                   color="primary"
                   onClick={handleRevealAnswers}
                   disabled={revealAnswers}
-                  sx={{ mt: 2, fontSize: '1.1rem', fontWeight: 700, width: '100%' }}
+                  sx={{ 
+                    mt: 2, 
+                    fontSize: '1.1rem', 
+                    fontWeight: 700, 
+                    width: '100%',
+                    minHeight: 48,
+                    '&:hover': {
+                      minHeight: 48
+                    }
+                  }}
                   fullWidth
                 >
                   Reveal Answers
@@ -811,6 +924,14 @@ const AdminView: React.FC = () => {
               variant="contained"
               startIcon={<ContentCopyIcon />}
               onClick={copyAllUrls}
+              sx={{ 
+                minHeight: 36,
+                minWidth: 120,
+                '&:hover': {
+                  minHeight: 36,
+                  minWidth: 120
+                }
+              }}
             >
               Copy All
             </Button>
@@ -818,6 +939,14 @@ const AdminView: React.FC = () => {
               variant="outlined"
               startIcon={<ContentCopyIcon />}
               onClick={copyAllUrlsOnly}
+              sx={{ 
+                minHeight: 36,
+                minWidth: 120,
+                '&:hover': {
+                  minHeight: 36,
+                  minWidth: 120
+                }
+              }}
             >
               URLs Only
             </Button>
