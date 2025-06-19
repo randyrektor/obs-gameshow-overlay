@@ -23,6 +23,12 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from the React build
+const clientBuildPath = path.join(__dirname, '..', 'client-new', 'build');
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
+}
+
 // Game state
 interface Contestant {
   id: string;
@@ -343,6 +349,13 @@ if (!fs.existsSync(recordingsDir)) {
 
 // Serve recordings directory
 app.use('/recordings', express.static(recordingsDir));
+
+// Catch-all handler for React Router - must be last
+if (fs.existsSync(clientBuildPath)) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {

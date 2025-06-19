@@ -5,8 +5,13 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "nodemon src/server.ts",
-    "build": "tsc",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "nodemon src/server.ts",
+    "dev:client": "cd client-new && npm start",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client-new && npm run build",
+    "build:server": "tsc",
+    "install:all": "npm install && cd client-new && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -28,6 +33,7 @@
     "@types/express": "^5.0.2",
     "@types/node": "^18.15.11",
     "@types/puppeteer": "^5.4.7",
+    "concurrently": "^8.2.2",
     "nodemon": "^2.0.22",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4"
