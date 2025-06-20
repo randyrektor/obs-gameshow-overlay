@@ -27,12 +27,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider
+  Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import StopIcon from '@mui/icons-material/Stop';
 
 interface Contestant {
   id: string;
@@ -86,6 +87,9 @@ const AdminView: React.FC = () => {
   const [timerMinutes, setTimerMinutes] = useState<string>('1');
   const [timerSeconds, setTimerSeconds] = useState<string>('0');
   const [resetScoresDialogOpen, setResetScoresDialogOpen] = useState(false);
+  const [sessionId, setSessionId] = useState<string>('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<any>(null);
 
   useEffect(() => {
     const newSocket = io(config.websocketUrl);
@@ -431,13 +435,110 @@ const AdminView: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const formatRemainingTime = (milliseconds: number | null): string => {
+    if (milliseconds === null) return '';
+    const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+    const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((milliseconds % (1000 * 60)) / 1000);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  const handleStartNewSession = async () => {
+    try {
+      const response = await fetch(`${config.apiUrl}/api/logs/start-session`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSessionId(data.sessionId);
+        setIsRecording(true);
+        console.log('New recording session started:', data);
+        // Fetch initial session info
+        fetchSessionInfo();
+      } else {
+        console.error('Failed to start new session');
+      }
+    } catch (error) {
+      console.error('Error starting new session:', error);
+    }
+  };
+
+  const fetchSessionInfo = async () => {
+    try {
+      const response = await fetch(`${config.apiUrl}/api/logs/session-info`);
+      if (response.ok) {
+        const data = await response.json();
+        setSessionInfo(data.sessionInfo);
+        
+        // If session is no longer active, update recording state
+        if (!data.sessionInfo.isActive && isRecording) {
+          setIsRecording(false);
+          setSessionId('');
+          setSessionInfo(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching session info:', error);
+    }
+  };
+
+  // Poll session info when recording is active
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const interval = setInterval(fetchSessionInfo, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  const handleEndSession = async () => {
+    if (!sessionId) return;
+    try {
+      const response = await fetch(`${config.apiUrl}/api/logs/end-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, fps: 29.97 }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `davinci-markers-session-${sessionId.substring(0, 8)}.xml`;
+        a.click();
+        URL.revokeObjectURL(url);
+        console.log('Session ended and XML exported.');
+      } else {
+        console.error('Failed to end session and export XML');
+      }
+    } catch (error) {
+      console.error('Error ending session:', error);
+    } finally {
+      setIsRecording(false);
+      setSessionId('');
+      setSessionInfo(null);
+    }
+  };
+
   return (
-    <Box sx={{ p: 3 }}>
-      <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: '#1d1d1d' }}>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: 'background.default' }}>
+      <Typography variant="h3" gutterBottom sx={{ color: 'primary.main', mb: 4 }}>
+        Syntax Admin Panel
+      </Typography>
+
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h4" gutterBottom>
           Game Control
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <Button
             variant="contained"
             color="secondary"
@@ -460,6 +561,54 @@ const AdminView: React.FC = () => {
           >
             Reset Scores
           </Button>
+          
+          {/* Recording Session Controls */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
+            {!isRecording ? (
+              <Tooltip title="Start a new recording session. Logs all game events (buzzers, scores, answers, timer events) and exports them as DaVinci Resolve marker XML file for video editing timeline integration.">
+                <Button
+                  variant="contained"
+                  onClick={handleStartNewSession}
+                  startIcon={<AddIcon />}
+                  sx={{ 
+                    minHeight: 36,
+                    minWidth: 120
+                  }}
+                >
+                  Start Recording
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip title="End the current session and export the marker file. Sessions automatically end after 3 hours for data safety.">
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={handleEndSession}
+                  startIcon={<StopIcon />}
+                  sx={{ 
+                    minHeight: 36,
+                    minWidth: 120
+                  }}
+                >
+                  Stop Recording
+                </Button>
+              </Tooltip>
+            )}
+
+            {isRecording && sessionId && (
+              <Chip 
+                label={
+                  sessionInfo ? 
+                    `Session: ${sessionId.substring(0, 8)}... (${formatRemainingTime(sessionInfo.remainingTime)} left, ${sessionInfo.totalEvents} events)` :
+                    `Session: ${sessionId.substring(0, 8)}...`
+                }
+                color="primary" 
+                variant="outlined"
+                onDelete={handleEndSession}
+                size="small"
+              />
+            )}
+          </Box>
         </Box>
       </Paper>
 
