@@ -1,18 +1,19 @@
-import express = require('express');
+import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import cors = require('cors');
-import dotenv = require('dotenv');
-import path = require('path');
-import os = require('os');
-import fs = require('fs');
+import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
 // Import eventLogger for recording functionality
 import { EventLogger } from './eventLogger';
+import { registerEndSessionRoute } from './endSessionRoute';
 
 dotenv.config();
 
-const app = express();
+const app: express.Express = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -466,31 +467,6 @@ app.post('/api/logs/start-session', (req, res) => {
   }
 });
 
-app.post('/api/logs/end-session', (req, res) => {
-  try {
-    const { sessionId, fps } = req.body;
-    
-    const eventsForSession = eventLogger.getEventsForSession(sessionId);
-
-    if (!eventsForSession) {
-      return res.status(404).json({ success: false, error: 'Session not found or events are gone.' });
-    }
-
-    const xml = eventLogger.exportToDaVinciResolveXML(fps || 29.97, eventsForSession);
-    
-    // Now that we have the data, we can "end" the session in memory.
-    eventLogger.endCurrentSession();
-
-    res.setHeader('Content-Type', 'application/xml');
-    res.setHeader('Content-Disposition', `attachment; filename="davinci-markers-session-${sessionId}.xml"`);
-    res.send(xml);
-
-  } catch (error) {
-    console.error('Error ending session:', error);
-    res.status(500).json({ success: false, error: 'Failed to end session' });
-  }
-});
-
 app.get('/api/logs/session-info', (req, res) => {
   try {
     const sessionInfo = eventLogger.getSessionInfo();
@@ -546,6 +522,8 @@ if (fs.existsSync(clientBuildPath)) {
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 }
+
+registerEndSessionRoute(app, eventLogger);
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
