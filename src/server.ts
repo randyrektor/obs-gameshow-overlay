@@ -443,15 +443,6 @@ app.get('/api/contestants', (req, res) => {
   res.json(contestants);
 });
 
-// Create recordings directory if it doesn't exist
-const recordingsDir = path.join(os.homedir(), 'Desktop', 'Test Animations');
-if (!fs.existsSync(recordingsDir)) {
-  fs.mkdirSync(recordingsDir, { recursive: true });
-}
-
-// Serve recordings directory
-app.use('/recordings', express.static(recordingsDir));
-
 // Recording API endpoints
 app.post('/api/logs/start-session', (req, res) => {
   try {
