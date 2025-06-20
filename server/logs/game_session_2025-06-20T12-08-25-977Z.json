@@ -1,0 +1,137 @@
+[
+  {
+    "timestamp": 1750421305978,
+    "eventType": "session_start",
+    "eventData": {
+      "sessionId": "session_1750421305977_r7lvc3x23",
+      "timestamp": "2025-06-20T12:08:25.978Z",
+      "version": "1.0.0"
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305978,
+    "eventType": "contestant_added",
+    "eventData": {
+      "contestantId": "contestant-1",
+      "contestantName": "John",
+      "timestamp": 1750421305978
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305978,
+    "eventType": "contestant_added",
+    "eventData": {
+      "contestantId": "contestant-2",
+      "contestantName": "Sarah",
+      "timestamp": 1750421305978
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305978,
+    "eventType": "game_type_change",
+    "eventData": {
+      "gameType": "buzzer",
+      "config": {}
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305979,
+    "eventType": "contestant_buzz",
+    "eventData": {
+      "contestantId": "contestant-1",
+      "contestantName": "John",
+      "buzzOrder": 1,
+      "action": "buzz"
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305979,
+    "eventType": "score_update",
+    "eventData": {
+      "contestantId": "contestant-1",
+      "contestantName": "John",
+      "oldScore": 0,
+      "newScore": 10,
+      "scoreChange": 10,
+      "reason": "correct_answer"
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305979,
+    "eventType": "question_change",
+    "eventData": {
+      "questionIndex": 0,
+      "question": "What is the capital of France?",
+      "options": [
+        "Paris",
+        "London",
+        "Berlin"
+      ]
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305980,
+    "eventType": "answer_submission",
+    "eventData": {
+      "contestantId": "contestant-1",
+      "contestantName": "John",
+      "answer": "Paris",
+      "isCorrect": true
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305980,
+    "eventType": "answer_reveal",
+    "eventData": {
+      "correctAnswer": "Paris",
+      "allAnswers": {
+        "contestant-1": "Paris"
+      }
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305980,
+    "eventType": "timer_start",
+    "eventData": {
+      "duration": 30,
+      "startTime": 1750421305980
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305980,
+    "eventType": "timer_tick",
+    "eventData": {
+      "remainingTime": 25,
+      "timestamp": 1750421305980
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305980,
+    "eventType": "timer_tick",
+    "eventData": {
+      "remainingTime": 20,
+      "timestamp": 1750421305980
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  },
+  {
+    "timestamp": 1750421305980,
+    "eventType": "timer_stop",
+    "eventData": {
+      "remainingTime": 15,
+      "stopTime": 1750421305980
+    },
+    "sessionId": "session_1750421305977_r7lvc3x23"
+  }
+]

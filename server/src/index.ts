@@ -1,7 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { recordingService } from './recordingService';
+import { eventLogger } from './eventLogger';
 import path from 'path';
 import cors from 'cors';
 
@@ -31,33 +31,8 @@ if (!require('fs').existsSync(recordingsDir)) {
 // Serve recordings directory
 app.use('/recordings', express.static(path.join(__dirname, '../recordings')));
 
-// Recording endpoints
-app.post('/start-recording', async (req, res) => {
-  try {
-    const { overlayType, duration, fps, preRoll, postRoll } = req.body;
-    const outputPath = await recordingService.startRecording({
-      overlayType,
-      duration,
-      fps,
-      preRoll,
-      postRoll
-    });
-    res.json({ success: true, videoPath: outputPath });
-  } catch (error) {
-    console.error('Error starting recording:', error);
-    res.status(500).json({ success: false, error: 'Failed to start recording' });
-  }
-});
-
-app.post('/stop-recording', async (req, res) => {
-  try {
-    await recordingService.stopRecording();
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error stopping recording:', error);
-    res.status(500).json({ success: false, error: 'Failed to stop recording' });
-  }
-});
+// Start a new logging session when server starts
+eventLogger.startNewSession();
 
 // Game state
 interface Contestant {
@@ -110,6 +85,12 @@ function startTimer(duration: number) {
   timerInterval = setInterval(() => {
     if (gameConfig.timerRemaining && gameConfig.timerRemaining > 0) {
       gameConfig.timerRemaining--;
+      
+      // Log timer tick every 5 seconds or when it's about to end
+      if (gameConfig.timerRemaining % 5 === 0 || gameConfig.timerRemaining <= 3) {
+        eventLogger.logTimerTick(gameConfig.timerRemaining);
+      }
+      
       emitGameState();
     } else {
       stopTimer();
@@ -167,6 +148,10 @@ io.on('connection', (socket) => {
     revealAnswers = false;
     correctAnswer = null;
     gameConfig = {};
+    
+    // Log game type change
+    eventLogger.logGameTypeChange(type, gameConfig);
+    
     emitGameState();
   });
 
@@ -177,6 +162,18 @@ io.on('connection', (socket) => {
     answers = {};
     revealAnswers = false;
     correctAnswer = null;
+    
+    // Log question change if present
+    if (config.currentQuestionIndex !== undefined) {
+      const questions = config.questions || [];
+      const currentQuestion = questions[config.currentQuestionIndex];
+      eventLogger.logQuestionChange(
+        config.currentQuestionIndex,
+        currentQuestion?.question,
+        currentQuestion?.options
+      );
+    }
+    
     emitGameState();
   });
 
@@ -187,6 +184,10 @@ io.on('connection', (socket) => {
 
   socket.on('admin:revealAnswers', () => {
     revealAnswers = true;
+    
+    // Log answer reveal
+    eventLogger.logAnswerReveal(correctAnswer || '', answers);
+    
     emitGameState();
   });
 
@@ -196,64 +197,114 @@ io.on('connection', (socket) => {
     answers = {};
     revealAnswers = false;
     correctAnswer = null;
+    
+    // Log buzzer reset
+    eventLogger.logEvent('buzzer_reset', { timestamp: Date.now() });
+    
     emitGameState();
   });
 
-  socket.on('admin:resetScores', () => {
-    contestants.forEach(c => c.score = 0);
-    emitGameState();
+  // Contestant events
+  socket.on('buzz', (contestantId: string) => {
+    const contestant = contestants.find(c => c.id === contestantId);
+    if (contestant && !contestant.buzzed && gameType === 'buzzer') {
+      contestant.buzzed = true;
+      buzzOrder.push(contestantId);
+      
+      // Log contestant buzz
+      eventLogger.logContestantBuzz(contestantId, contestant.name, buzzOrder.length);
+      
+      emitGameState();
+    }
   });
 
-  socket.on('admin:updateScore', (data: { contestantId: string, score: number }) => {
-    console.log('Updating score:', data);
+  socket.on('submitAnswer', (data: { contestantId: string; answer: string }) => {
     const contestant = contestants.find(c => c.id === data.contestantId);
     if (contestant) {
+      answers[data.contestantId] = data.answer;
+      
+      // Log answer submission
+      const isCorrect = correctAnswer ? data.answer === correctAnswer : undefined;
+      eventLogger.logAnswerSubmission(data.contestantId, contestant.name, data.answer, isCorrect);
+      
+      emitGameState();
+    }
+  });
+
+  // Admin score updates
+  socket.on('admin:updateScore', (data: { contestantId: string; score: number }) => {
+    const contestant = contestants.find(c => c.id === data.contestantId);
+    if (contestant) {
+      const oldScore = contestant.score;
       contestant.score = data.score;
+      
+      // Log score update
+      eventLogger.logScoreUpdate(data.contestantId, contestant.name, oldScore, data.score);
+      
       emitGameState();
     }
   });
 
-  socket.on('admin:removeContestant', (contestantId: string) => {
-    const idx = contestants.findIndex(c => c.id === contestantId);
-    if (idx !== -1) {
-      contestants.splice(idx, 1);
-      buzzOrder = buzzOrder.filter(id => id !== contestantId);
-      delete answers[contestantId];
-      emitGameState();
-    }
-  });
-
-  socket.on('admin:reorderContestants', (newOrder: string[]) => {
-    const idToContestant = Object.fromEntries(contestants.map(c => [c.id, c]));
-    const reordered = newOrder.map(id => idToContestant[id]).filter(Boolean);
-    if (reordered.length === contestants.length) {
-      contestants.splice(0, contestants.length, ...reordered);
-      emitGameState();
-    }
-  });
-
+  // Timer events
   socket.on('admin:startTimer', (duration: number) => {
     console.log('Starting timer:', duration);
     startTimer(duration);
+    
+    // Log timer start
+    eventLogger.logTimerStart(duration);
   });
 
   socket.on('admin:stopTimer', () => {
     console.log('Stopping timer');
+    const remainingTime = gameConfig.timerRemaining || 0;
     stopTimer();
+    
+    // Log timer stop
+    eventLogger.logTimerStop(remainingTime);
   });
 
-  socket.on('admin:setTimerDuration', (duration: number) => {
-    gameConfig.timerDuration = duration;
+  // Contestant management
+  socket.on('admin:contestantAdded', (contestant: Contestant) => {
+    console.log('Contestant added via socket:', contestant);
+    contestants.push(contestant);
+    
+    // Log contestant addition
+    eventLogger.logEvent('contestant_added', {
+      contestantId: contestant.id,
+      contestantName: contestant.name,
+      timestamp: Date.now()
+    });
+    
     emitGameState();
   });
 
-  socket.on('admin:contestantAdded', (contestant: Contestant) => {
-    console.log('Contestant added via socket:', contestant);
-    const existingIndex = contestants.findIndex(c => c.id === contestant.id);
-    if (existingIndex === -1) {
-      contestants.push(contestant);
+  socket.on('admin:removeContestant', (contestantId: string) => {
+    const index = contestants.findIndex(c => c.id === contestantId);
+    if (index !== -1) {
+      const contestant = contestants[index];
+      contestants.splice(index, 1);
+      
+      // Log contestant removal
+      eventLogger.logEvent('contestant_removed', {
+        contestantId,
+        contestantName: contestant.name,
+        timestamp: Date.now()
+      });
+      
       emitGameState();
     }
+  });
+
+  socket.on('admin:resetScores', () => {
+    contestants.forEach(contestant => {
+      const oldScore = contestant.score;
+      contestant.score = 0;
+      
+      // Log score reset
+      eventLogger.logScoreUpdate(contestant.id, contestant.name, oldScore, 0, 'reset');
+    });
+    
+    emitGameState();
   });
 });
 
@@ -289,6 +340,97 @@ app.post('/api/contestants', (req, res) => {
 app.get('/api/contestants', (req, res) => {
   console.log('Getting all contestants:', contestants);
   res.json(contestants);
+});
+
+// Add new endpoints for exporting logs
+app.get('/api/logs/export/markers', (req, res) => {
+  try {
+    const fps = parseInt(req.query.fps as string) || 30;
+    const markers = eventLogger.exportToDaVinciResolveMarkers(fps);
+    res.json({ success: true, markers });
+  } catch (error) {
+    console.error('Error exporting markers:', error);
+    res.status(500).json({ success: false, error: 'Failed to export markers' });
+  }
+});
+
+app.get('/api/logs/export/xml', (req, res) => {
+  try {
+    const fps = parseFloat(req.query.fps as string) || 30;
+    const xml = eventLogger.exportToDaVinciResolveXML(fps);
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Content-Disposition', 'attachment; filename="davinci-markers.xml"');
+    res.send(xml);
+  } catch (error) {
+    console.error('Error exporting XML:', error);
+    res.status(500).json({ success: false, error: 'Failed to export XML' });
+  }
+});
+
+app.post('/api/logs/end-session', (req, res) => {
+  try {
+    const { sessionId, fps } = req.body;
+    
+    // This is a simplified approach. A more robust solution would be to
+    // find the log file on disk using the sessionId and read its contents.
+    const eventsForSession = eventLogger.getEventsForSession(sessionId);
+
+    if (!eventsForSession) {
+      return res.status(404).json({ success: false, error: 'Session not found or events are gone.' });
+    }
+
+    const xml = eventLogger.exportToDaVinciResolveXML(fps || 29.97, eventsForSession);
+    
+    // Now that we have the data, we can "end" the session in memory.
+    eventLogger.endCurrentSession();
+
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Content-Disposition', `attachment; filename="davinci-markers-session-${sessionId}.xml"`);
+    res.send(xml);
+
+  } catch (error) {
+    console.error('Error ending session:', error);
+    res.status(500).json({ success: false, error: 'Failed to end session' });
+  }
+});
+
+app.get('/api/logs/export/csv', (req, res) => {
+  try {
+    const csv = eventLogger.exportToCSV();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="game-events.csv"');
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting CSV:', error);
+    res.status(500).json({ success: false, error: 'Failed to export CSV' });
+  }
+});
+
+app.post('/api/logs/start-session', (req, res) => {
+  try {
+    eventLogger.startNewSession();
+    res.json({ 
+      success: true, 
+      sessionId: eventLogger.getSessionId(),
+      logFile: eventLogger.getCurrentLogFile()
+    });
+  } catch (error) {
+    console.error('Error starting new session:', error);
+    res.status(500).json({ success: false, error: 'Failed to start new session' });
+  }
+});
+
+app.get('/api/logs/session-info', (req, res) => {
+  try {
+    const sessionInfo = eventLogger.getSessionInfo();
+    res.json({ 
+      success: true, 
+      sessionInfo
+    });
+  } catch (error) {
+    console.error('Error getting session info:', error);
+    res.status(500).json({ success: false, error: 'Failed to get session info' });
+  }
 });
 
 const PORT = 3000;
