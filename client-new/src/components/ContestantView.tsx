@@ -211,18 +211,32 @@ const ContestantView: React.FC<{ contestantId: string }> = ({ contestantId }) =>
       </Typography>
 
       {/* Timer Display */}
-      {gameState.gameConfig?.timerRemaining !== undefined && (
-        <Typography
-          variant="h2"
-          sx={{
-            mb: 2,
-            color: gameState.gameConfig.timerRunning ? 'primary.main' : 'error.main',
-            transition: 'color 0.3s ease',
-          }}
-        >
-          {formatTime(gameState.gameConfig.timerRemaining)}
-        </Typography>
-      )}
+      {(() => {
+        // Show timerDuration when timer is not running, otherwise show timerRemaining
+        const displayTime = gameState.gameConfig?.timerRunning 
+          ? gameState.gameConfig.timerRemaining 
+          : gameState.gameConfig?.timerDuration;
+        
+        if (displayTime !== undefined) {
+          return (
+            <Typography
+              variant="h2"
+              sx={{
+                mb: 2,
+                color: gameState.gameConfig?.timerRunning 
+                  ? 'primary.main' 
+                  : displayTime === 0 
+                    ? 'error.main' 
+                    : 'text.secondary',
+                transition: 'color 0.3s ease',
+              }}
+            >
+              {formatTime(displayTime)}
+            </Typography>
+          );
+        }
+        return null;
+      })()}
 
       {/* Question Progress */}
       {currentGameType === 'multiple-choice' && gameState.gameConfig?.questions && (
@@ -239,7 +253,7 @@ const ContestantView: React.FC<{ contestantId: string }> = ({ contestantId }) =>
               <TableCell align="left"><b>Contestant</b></TableCell>
               <TableCell align="center"><b>Score</b></TableCell>
               <TableCell align="center"><b>Status</b></TableCell>
-              {currentGameType === 'buzzer' && <TableCell align="center"><b>Buzz Order</b></TableCell>}
+              {currentGameType === 'buzzer' && <TableCell align="center" sx={{ minWidth: 120 }}><b>Buzz Order</b></TableCell>}
               {showAnswers && <TableCell align="center"><b>Answer</b></TableCell>}
             </TableRow>
           </TableHead>
@@ -257,9 +271,11 @@ const ContestantView: React.FC<{ contestantId: string }> = ({ contestantId }) =>
                 </TableCell>
                 {currentGameType === 'buzzer' && (
                   <TableCell align="center">
-                    {getBuzzOrder(c.id) ? (
-                      <Chip label={getBuzzOrder(c.id)} color={getBuzzOrder(c.id) === 1 ? 'primary' : 'default'} />
-                    ) : ''}
+                    <Box sx={{ minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {getBuzzOrder(c.id) ? (
+                        <Chip label={getBuzzOrder(c.id)} color={getBuzzOrder(c.id) === 1 ? 'primary' : 'default'} />
+                      ) : null}
+                    </Box>
                   </TableCell>
                 )}
                 {showAnswers && (

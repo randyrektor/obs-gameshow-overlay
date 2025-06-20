@@ -104,9 +104,7 @@ const theme = createTheme({
           },
         },
         contained: {
-          '&:hover': {
-            transform: 'translateY(-1px)',
-          },
+          // Removed hover transform to prevent flickering
         },
       },
     },

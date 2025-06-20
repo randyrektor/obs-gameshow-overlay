@@ -238,6 +238,14 @@ const AdminView: React.FC = () => {
     const reordered = Array.from(gameState.contestants);
     const [removed] = reordered.splice(result.source.index, 1);
     reordered.splice(result.destination.index, 0, removed);
+
+    // Optimistically update the state for a smooth UI transition.
+    // The server will send a final gameState update shortly.
+    setGameState(prev => ({
+      ...prev,
+      contestants: reordered
+    }));
+
     socket.emit('admin:reorderContestants', reordered.map(c => c.id));
   };
 
@@ -372,6 +380,20 @@ const AdminView: React.FC = () => {
     }
   };
 
+  const handleResumeTimer = () => {
+    if (socket) {
+      socket.emit('admin:resumeTimer');
+    }
+  };
+
+  const handleStopOrResumeTimer = () => {
+    if (gameConfig.timerRunning) {
+      handleStopTimer();
+    } else {
+      handleResumeTimer();
+    }
+  };
+
   const handleTimerMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTimerMinutes(value);
@@ -415,7 +437,7 @@ const AdminView: React.FC = () => {
         <Typography variant="h4" gutterBottom>
           Game Control
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="contained"
             color="secondary"
@@ -437,33 +459,6 @@ const AdminView: React.FC = () => {
             }}
           >
             Reset Scores
-          </Button>
-        </Box>
-        <Typography variant="h4" gutterBottom>
-          Add Contestant
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <TextField
-            label="Contestant Name"
-            value={newContestantName}
-            onChange={(e) => setNewContestantName(e.target.value)}
-            fullWidth
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleAddContestant();
-              }
-            }}
-          />
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddContestant}
-            sx={{ 
-              minHeight: 36,
-              minWidth: 100
-            }}
-          >
-            Add
           </Button>
         </Box>
       </Paper>
@@ -518,7 +513,7 @@ const AdminView: React.FC = () => {
         </FormControl>
 
         {/* Timer Controls - moved here */}
-        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+        <Stack direction="row" alignItems="center" sx={{ mb: 2, flexWrap: 'wrap', gap: 2 }}>
           <TextField
             label="Minutes"
             type="number"
@@ -539,7 +534,6 @@ const AdminView: React.FC = () => {
             variant="contained"
             color="primary"
             onClick={handleStartTimer}
-            disabled={gameConfig.timerRunning}
             sx={{ 
               minHeight: 36,
               minWidth: 120
@@ -547,21 +541,27 @@ const AdminView: React.FC = () => {
           >
             Start Timer
           </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleStopTimer}
-            disabled={!gameConfig.timerRunning}
-            sx={{ 
-              minHeight: 36,
-              minWidth: 120
-            }}
-          >
-            Stop Timer
-          </Button>
+          {gameConfig.timerRemaining !== undefined && (
+            <Button
+              variant="contained"
+              color={gameConfig.timerRunning ? "error" : "success"}
+              onClick={handleStopOrResumeTimer}
+              sx={{ 
+                minHeight: 36,
+                minWidth: 120
+              }}
+            >
+              {gameConfig.timerRunning ? 'Stop Timer' : (gameConfig.timerRemaining > 0 ? 'Resume Timer' : 'Stop Timer')}
+            </Button>
+          )}
           {gameConfig.timerRemaining !== undefined && (
             <Typography variant="h4" sx={{ ml: 2 }}>
               {formatTime(gameConfig.timerRemaining)}
+            </Typography>
+          )}
+          {gameConfig.timerRemaining === undefined && gameConfig.timerDuration !== undefined && (
+            <Typography variant="h4" sx={{ ml: 2, color: 'text.secondary' }}>
+              {formatTime(gameConfig.timerDuration)}
             </Typography>
           )}
         </Stack>
@@ -609,7 +609,7 @@ const AdminView: React.FC = () => {
         {(gameType === 'multiple-choice' || gameType === 'two-option') && (
           <>
             {gameType === 'multiple-choice' && (
-              <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', maxWidth: 1200, mx: 'auto' }}>
+              <Paper elevation={3} sx={{ mb: 3, bgcolor: 'background.paper' }}>
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, width: '100%', textAlign: 'left' }}>
                   Question Management
                 </Typography>
@@ -665,8 +665,8 @@ const AdminView: React.FC = () => {
                 </Stack>
                 <Divider sx={{ my: 3 }} />
                 {gameConfig.question && (
-                  <Box sx={{ width: '100%', bgcolor: 'grey.900', borderRadius: 2, py: 2, mb: 3 }}>
-                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 700, pl: 2, width: '100%', textAlign: 'left' }}>
+                  <Box sx={{ width: '100%', bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 2, p: 3, mb: 3 }}>
+                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 700, width: '100%', textAlign: 'left' }}>
                       {gameConfig.question}
                     </Typography>
                     <Box
@@ -699,10 +699,7 @@ const AdminView: React.FC = () => {
                             textTransform: 'none',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            '&:hover': {
-                              height: 40
-                            }
+                            textOverflow: 'ellipsis'
                           }}
                         >
                           <span style={{ fontWeight: 700, whiteSpace: 'nowrap', marginRight: 8 }}>{String.fromCharCode(65 + idx)}:</span>
@@ -777,7 +774,7 @@ const AdminView: React.FC = () => {
             )}
 
             {gameType === 'two-option' && (
-              <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', maxWidth: 1200, mx: 'auto' }}>
+              <Paper elevation={3} sx={{ mb: 3, bgcolor: 'background.paper' }}>
                 <Typography variant="h6" gutterBottom sx={{ width: '100%', textAlign: 'left' }}>
                   Two Options
                 </Typography>
@@ -881,18 +878,25 @@ const AdminView: React.FC = () => {
       </Paper>
 
       <Paper elevation={3} sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: 2,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2
+        }}>
           <Typography variant="h4">
             Contestants
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
             <Button
               variant="contained"
               startIcon={<ContentCopyIcon />}
               onClick={copyAllUrls}
               sx={{ 
                 minHeight: 36,
-                minWidth: 120
+                flexGrow: 1
               }}
             >
               Copy All
@@ -903,74 +907,112 @@ const AdminView: React.FC = () => {
               onClick={copyAllUrlsOnly}
               sx={{ 
                 minHeight: 36,
-                minWidth: 120
+                flexGrow: 1
               }}
             >
               URLs Only
             </Button>
           </Box>
         </Box>
+        
+        {/* Add Contestant Section */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+          <TextField
+            label="Contestant Name"
+            value={newContestantName}
+            onChange={(e) => setNewContestantName(e.target.value)}
+            size="small"
+            sx={{ flexGrow: 1 }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleAddContestant();
+              }
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAddContestant}
+            size="small"
+            sx={{ 
+              minHeight: 40,
+              minWidth: 80
+            }}
+          >
+            Add
+          </Button>
+        </Box>
+        
         <DragDropContext onDragEnd={handleReorder}>
           <Droppable droppableId="contestant-list">
             {(provided) => (
-              <List ref={provided.innerRef} {...provided.droppableProps}>
+              <List ref={provided.innerRef} {...provided.droppableProps} sx={{ p: 0 }}>
                 {gameState.contestants.map((contestant, idx) => (
                   <Draggable key={contestant.id} draggableId={contestant.id} index={idx}>
                     {(provided, snapshot) => (
-                      <ListItem
+                      <Paper
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
-                        secondaryAction={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <TextField
-                              type="number"
-                              label="Score"
-                              value={contestant.score}
-                              onChange={(e) => handleUpdateScore(contestant.id, parseInt(e.target.value))}
-                              size="small"
-                              sx={{ width: 100 }}
-                            />
-                            <Tooltip title="Copy Contestant URL">
-                              <IconButton 
-                                edge="end" 
-                                onClick={() => copyContestantUrl(contestant.id)}
-                                sx={{ mr: 1 }}
-                              >
-                                <ContentCopyIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <IconButton edge="end" aria-label="delete" onClick={() => handleRemoveContestant(contestant.id)}>
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                        }
+                        elevation={snapshot.isDragging ? 4 : 1}
+                        sx={{
+                          mb: 1.5,
+                          borderRadius: 2,
+                          transition: 'box-shadow 0.2s ease-in-out',
+                        }}
                       >
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {contestant.name}
-                              <Box
-                                sx={{
-                                  width: 8,
-                                  height: 8,
-                                  borderRadius: '50%',
-                                  bgcolor: contestant.connected ? 'success.main' : 'error.main',
-                                  ml: 1,
-                                  transition: 'background-color 0.3s ease'
-                                }}
+                        <ListItem
+                          secondaryAction={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <TextField
+                                type="number"
+                                label="Score"
+                                value={contestant.score}
+                                onChange={(e) => handleUpdateScore(contestant.id, parseInt(e.target.value))}
+                                size="small"
+                                sx={{ width: 100 }}
                               />
+                              <Tooltip title="Copy Contestant URL">
+                                <IconButton
+                                  edge="end"
+                                  onClick={() => copyContestantUrl(contestant.id)}
+                                  sx={{ mr: 1 }}
+                                >
+                                  <ContentCopyIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <IconButton edge="end" aria-label="delete" onClick={() => handleRemoveContestant(contestant.id)}>
+                                <DeleteIcon />
+                              </IconButton>
                             </Box>
                           }
-                          secondary={
-                            <Box>
-                              <Typography variant="body2" color="text.secondary">
-                                ID: {contestant.id}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                      </ListItem>
+                        >
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {contestant.name}
+                                <Box
+                                  sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    bgcolor: contestant.connected ? 'success.main' : 'error.main',
+                                    ml: 1,
+                                    transition: 'background-color 0.3s ease'
+                                  }}
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  ID: {contestant.id}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                      </Paper>
                     )}
                   </Draggable>
                 ))}

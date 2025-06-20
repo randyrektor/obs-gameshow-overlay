@@ -15,8 +15,8 @@ const TimerOnly: React.FC<TimerOnlyProps> = ({ timerRemaining, timerRunning, tim
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Always display timerRemaining if defined, otherwise fall back to timerDuration
-  const displayTime = typeof timerRemaining === 'number' ? timerRemaining : timerDuration;
+  // Show timerDuration when timer is not running, otherwise show timerRemaining
+  const displayTime = timerRunning ? timerRemaining : timerDuration;
 
   return (
     <Box

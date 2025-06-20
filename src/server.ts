@@ -127,6 +127,22 @@ function stopTimer() {
   emitGameState();
 }
 
+function resumeTimer() {
+  if (gameConfig.timerRemaining && gameConfig.timerRemaining > 0 && !gameConfig.timerRunning) {
+    gameConfig.timerRunning = true;
+    emitGameState();
+
+    timerInterval = setInterval(() => {
+      if (gameConfig.timerRemaining && gameConfig.timerRemaining > 0) {
+        gameConfig.timerRemaining--;
+        emitGameState();
+      } else {
+        stopTimer();
+      }
+    }, 1000);
+  }
+}
+
 // Socket.IO event handlers
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -318,6 +334,10 @@ io.on('connection', (socket) => {
 
   socket.on('admin:stopTimer', () => {
     stopTimer();
+  });
+
+  socket.on('admin:resumeTimer', () => {
+    resumeTimer();
   });
 
   socket.on('admin:setTimerDuration', (duration: number) => {
