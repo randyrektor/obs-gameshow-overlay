@@ -1,7 +1,7 @@
-import express, { Express } from 'express';
+import express from 'express';
 import { EventLogger } from './eventLogger';
 
-export function registerEndSessionRoute(app: Express, eventLogger: EventLogger) {
+export function registerEndSessionRoute(app: express.Express, eventLogger: EventLogger) {
   app.post('/api/logs/end-session', (req, res) => {
     try {
       const { sessionId, fps } = req.body;
