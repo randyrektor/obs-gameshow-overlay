@@ -13,6 +13,11 @@ build/
 .env.local
 .env.*.local
 
+# Application data
+logs/
+recordings/
+frames/
+
 # IDE and editor files
 .idea/
 .vscode/

@@ -28,7 +28,7 @@ npm install
 
 3. Install frontend dependencies:
 ```bash
-cd client
+cd client-new
 npm install
 ```
 
@@ -46,7 +46,7 @@ npm run dev
 
 2. In a new terminal, start the frontend:
 ```bash
-cd client
+cd client-new
 npm start
 ```
 
@@ -70,10 +70,13 @@ npm start
 ## Development
 
 - Backend code is in the `src` directory
-- Frontend code is in the `client/src` directory
+- Frontend code is in the `client-new/src` directory
 - The application uses TypeScript for type safety
 - Material-UI is used for the user interface
 - Socket.IO handles real-time communication
+
+For deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+For event logging and DaVinci Resolve integration, see [LOGGING_GUIDE.md](LOGGING_GUIDE.md).
 
 ## License
 
