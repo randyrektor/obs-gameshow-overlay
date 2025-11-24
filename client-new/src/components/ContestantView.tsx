@@ -99,7 +99,11 @@ const ContestantView: React.FC<{ contestantId: string }> = ({ contestantId }) =>
   // Handle buzzer
   const handleBuzz = () => {
     if (socket && contestant && !contestant.buzzed) {
-      socket.emit('buzz', contestantId);
+      // Send buzz with client timestamp for accurate timing analysis
+      socket.emit('buzz', { 
+        contestantId, 
+        clientTimestamp: Date.now() 
+      });
     }
   };
 

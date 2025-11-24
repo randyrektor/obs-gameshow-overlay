@@ -2,7 +2,9 @@ import fs = require('fs');
 import path = require('path');
 
 export interface GameEvent {
-  timestamp: number; // Unix timestamp in milliseconds
+  timestamp: number; // Unix timestamp in milliseconds (when event was logged)
+  serverReceiveTime?: number; // When server received the event (for network latency tracking)
+  clientTimestamp?: number; // When client sent the event (if provided)
   eventType: string;
   eventData: any;
   sessionId: string;
@@ -92,7 +94,7 @@ export class EventLogger {
     console.log(`Session ${this.sessionId} ended.`);
   }
 
-  logEvent(eventType: string, eventData: any): void {
+  logEvent(eventType: string, eventData: any, serverReceiveTime?: number, clientTimestamp?: number): void {
     if (!this.currentLogFile) {
       // Don't log events if no session is active
       return;
@@ -100,6 +102,8 @@ export class EventLogger {
 
     const event: GameEvent = {
       timestamp: Date.now(),
+      serverReceiveTime,
+      clientTimestamp,
       eventType,
       eventData,
       sessionId: this.sessionId
@@ -116,13 +120,13 @@ export class EventLogger {
   }
 
   // Game-specific event logging methods
-  logContestantBuzz(contestantId: string, contestantName: string, buzzOrder: number): void {
+  logContestantBuzz(contestantId: string, contestantName: string, buzzOrder: number, serverReceiveTime?: number, clientTimestamp?: number): void {
     this.logEvent('contestant_buzz', {
       contestantId,
       contestantName,
       buzzOrder,
       action: 'buzz'
-    });
+    }, serverReceiveTime, clientTimestamp);
   }
 
   logScoreUpdate(contestantId: string, contestantName: string, oldScore: number, newScore: number, reason?: string): void {

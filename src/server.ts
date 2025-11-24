@@ -214,21 +214,39 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('buzz', async (contestantId: string) => {
-    console.log('Buzz received from:', contestantId);
+  socket.on('buzz', async (data: string | { contestantId: string, clientTimestamp?: number }) => {
+    // Capture server receive time immediately for accurate timing
+    const serverReceiveTime = Date.now();
+    
+    // Support both old format (just string) and new format (object with timestamp)
+    const contestantId = typeof data === 'string' ? data : data.contestantId;
+    const clientTimestamp = typeof data === 'object' ? data.clientTimestamp : undefined;
+    
+    console.log('Buzz received from:', contestantId, clientTimestamp ? `(client: ${clientTimestamp}, latency: ${serverReceiveTime - clientTimestamp}ms)` : '');
+    
     if (gameType !== 'buzzer') return;
+    
     const contestant = contestants.find(c => c.id === contestantId);
-    if (contestant && !contestant.buzzed) {
-      contestant.buzzed = true;
-      if (!buzzOrder.includes(contestantId)) {
-        buzzOrder.push(contestantId);
-      }
-      
-      // Log contestant buzz
-      eventLogger.logContestantBuzz(contestantId, contestant.name, buzzOrder.length);
-      
-      emitGameState();
+    if (!contestant) return;
+    
+    // Atomic check and update - prevent race conditions
+    if (contestant.buzzed) {
+      console.log(`Duplicate buzz ignored from ${contestant.name}`);
+      return;
     }
+    
+    // Set buzzed flag immediately
+    contestant.buzzed = true;
+    
+    // Add to buzz order only if not already present (additional safety check)
+    if (!buzzOrder.includes(contestantId)) {
+      buzzOrder.push(contestantId);
+    }
+    
+    // Log contestant buzz with full timing data
+    eventLogger.logContestantBuzz(contestantId, contestant.name, buzzOrder.length, serverReceiveTime, clientTimestamp);
+    
+    emitGameState();
   });
 
   socket.on('submitAnswer', ({ contestantId, answer }) => {
